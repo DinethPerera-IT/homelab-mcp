@@ -86,3 +86,7 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/src -w /src p
 ```
 
 Then rebuild with `--target test` before deploying.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

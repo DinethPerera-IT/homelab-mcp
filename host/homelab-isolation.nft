@@ -18,7 +18,7 @@ table inet homelab_isolation {
     }
     chain forward {
         type filter hook forward priority filter - 1; policy accept;
-        # Docker-published ports (e.g. host:3050) are DNAT'd to another container, so they pass here, not "input".
+        # Docker-published ports (e.g. host:<port>) are DNAT'd to another container, so they pass here, not "input".
         iifname "br-hermes" oifname { "docker0", "br-*" } counter drop comment "Hermes: no other containers, incl. published ports"
         # Traffic inside one bridge also passes here (br_netfilter), so only drop what LEAVES the MCP bridges.
         iifname "br-mcp-int" oifname != "br-mcp-int" counter drop comment "mcp_internal: Hermes <-> homelab-mcp only"
