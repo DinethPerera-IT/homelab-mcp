@@ -1,0 +1,23 @@
+# node-exporter for Prometheus (scraped at localhost:9100). Replaces the original `docker run` container.
+# Host networking and the /proc, /sys, / mounts are kept as they were: node-exporter reports on the host itself.
+name: node-exporter
+services:
+  node-exporter:
+    image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
+    container_name: node-exporter
+    restart: always
+    network_mode: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+      - --collector.textfile.directory=/textfile
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/lib/node_exporter/textfile:/textfile:ro

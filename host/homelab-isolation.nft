@@ -1,0 +1,27 @@
+#!/usr/sbin/nft -f
+# Homelab container isolation. Own table: never touches Docker's or Tailscale's rules.
+# Only matches traffic arriving FROM these container bridges, so SSH/Tailscale access can't be affected.
+#   br-hermes    Hermes (internet egress allowed, host services blocked)
+#   br-mcp-int   internal network Hermes <-> homelab-mcp (host blocked)
+#   br-mcp-prom  homelab-mcp -> Prometheus on the host, port 9090 only; no internet
+# Re-applying is safe: the table is created, deleted and rebuilt atomically.
+table inet homelab_isolation
+delete table inet homelab_isolation
+
+table inet homelab_isolation {
+    chain input {
+        type filter hook input priority filter - 1; policy accept;
+        iifname { "br-hermes", "br-mcp-int", "br-mcp-prom" } ct state established,related accept comment "replies to host-initiated connections (dashboard, docker exec)"
+        iifname { "br-hermes", "br-mcp-int" } counter drop comment "Hermes: no host services"
+        iifname "br-mcp-prom" tcp dport 9090 counter accept comment "homelab-mcp -> Prometheus"
+        iifname "br-mcp-prom" counter drop comment "homelab-mcp: nothing else on the host"
+    }
+    chain forward {
+        type filter hook forward priority filter - 1; policy accept;
+        # Docker-published ports (e.g. host:3050) are DNAT'd to another container, so they pass here, not "input".
+        iifname "br-hermes" oifname { "docker0", "br-*" } counter drop comment "Hermes: no other containers, incl. published ports"
+        # Traffic inside one bridge also passes here (br_netfilter), so only drop what LEAVES the MCP bridges.
+        iifname "br-mcp-int" oifname != "br-mcp-int" counter drop comment "mcp_internal: Hermes <-> homelab-mcp only"
+        iifname "br-mcp-prom" oifname != "br-mcp-prom" counter drop comment "homelab-mcp: no internet"
+    }
+}

@@ -1,0 +1,14 @@
+[Unit]
+Description=Homelab container isolation (nftables table inet homelab_isolation)
+Documentation=file:///etc/homelab/homelab-isolation.nft
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/homelab/homelab-isolation.nft
+ExecStop=/usr/sbin/nft delete table inet homelab_isolation
+
+[Install]
+WantedBy=multi-user.target

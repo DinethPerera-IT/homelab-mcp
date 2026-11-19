@@ -1,0 +1,4 @@
+# Runtime dependencies. Locked with hashes into requirements.txt (see README "Updating dependencies").
+mcp==2.3.0
+httpx
+uvicorn
