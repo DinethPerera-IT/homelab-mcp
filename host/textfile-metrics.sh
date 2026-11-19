@@ -13,7 +13,7 @@ write() {   # $1 = file name; metrics on stdin. Atomic: node-exporter never sees
 
 ids=$(docker ps -aq)
 {
-    echo "# HELP homelab_container_running 1 if the container is running."
+    echo "# HELP homelab_container_running 1 if the container is running. restart_policy=no means stopping it is expected."
     echo "# TYPE homelab_container_running gauge"
     echo "# HELP homelab_container_restart_count Docker restart count (restarts by the restart policy, e.g. crash loops)."
     echo "# TYPE homelab_container_restart_count gauge"
@@ -22,12 +22,12 @@ ids=$(docker ps -aq)
     echo "# HELP homelab_container_health 1 for the container's current health status."
     echo "# TYPE homelab_container_health gauge"
     if [ -n "$ids" ]; then
-        docker inspect --format '{{.Name}} {{.State.Running}} {{.RestartCount}} {{.State.StartedAt}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' $ids |
-        while read -r name running restarts started health; do
+        docker inspect --format '{{.Name}} {{.State.Running}} {{.RestartCount}} {{.State.StartedAt}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} {{.HostConfig.RestartPolicy.Name}}' $ids |
+        while read -r name running restarts started health policy; do
             name=${name#/}
             [ "$running" = "true" ] && r=1 || r=0
             ts=$(date -d "$started" +%s 2>/dev/null || echo 0)
-            echo "homelab_container_running{name=\"$name\"} $r"
+            echo "homelab_container_running{name=\"$name\",restart_policy=\"${policy:-no}\"} $r"
             echo "homelab_container_restart_count{name=\"$name\"} $restarts"
             echo "homelab_container_started_timestamp_seconds{name=\"$name\"} $ts"
             echo "homelab_container_health{name=\"$name\",status=\"$health\"} 1"

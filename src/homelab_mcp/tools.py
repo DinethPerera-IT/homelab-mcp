@@ -88,7 +88,10 @@ async def container_status(prom: Prometheus, hours: int) -> dict:
     return {
         "as_of": _now(), "available": True, "window_hours": hours,
         "containers_total": len(running),
-        "not_running": sorted(s.labels["name"] for s in running if s.value != 1),
+        # Only containers meant to stay up (restart policy always/unless-stopped/on-failure) count as a problem;
+        # restart_policy=no containers (one-off `docker run`s, kept rollbacks) are stopped on purpose.
+        "not_running": sorted(s.labels["name"] for s in running if s.value != 1 and s.labels.get("restart_policy") != "no"),
+        "stopped_on_purpose": sum(1 for s in running if s.value != 1 and s.labels.get("restart_policy") == "no"),
         "crash_restarts": {s.labels["name"]: math.ceil(s.value) for s in restarts if s.value > 0},
         "started_in_window": sorted(s.labels["name"] for s in started_ago if 0 <= s.value < window_s),
         "unhealthy": {s.labels["name"]: s.labels.get("status", "?") for s in unhealthy},

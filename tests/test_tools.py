@@ -29,13 +29,15 @@ async def test_disk_trend_filling_and_not_filling():
 
 async def test_container_status_reports_problems_only():
     prom = fake_prometheus({
-        q.CONTAINER_RUNNING: [({"name": "a"}, 1), ({"name": "b"}, 0)],
+        q.CONTAINER_RUNNING: [({"name": "a", "restart_policy": "always"}, 1),
+                              ({"name": "b", "restart_policy": "unless-stopped"}, 0),
+                              ({"name": "old", "restart_policy": "no"}, 0)],
         q.container_restarts(24): [({"name": "a"}, 0), ({"name": "c"}, 2.4)],
         q.CONTAINER_STARTED_AGO_S: [({"name": "a"}, 600), ({"name": "b"}, 999999)],
         q.CONTAINER_UNHEALTHY: [({"name": "c", "status": "unhealthy"}, 1)],
     })
     r = await tools.container_status(prom, 24)
-    assert r["not_running"] == ["b"] and r["crash_restarts"] == {"c": 3}
+    assert r["not_running"] == ["b"] and r["stopped_on_purpose"] == 1 and r["crash_restarts"] == {"c": 3}
     assert r["started_in_window"] == ["a"] and r["unhealthy"] == {"c": "unhealthy"}
 
 
